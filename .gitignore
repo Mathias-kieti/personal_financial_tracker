@@ -1,8 +1,10 @@
 # Node modules
-node_modules/
+FRONTEND/node_modules/
+BACKEND/node_modules/
 
-# Build output
-build/
+# Build outputs
+FRONTEND/build/
+BACKEND/build/
 dist/
 
 # Environment variables
@@ -15,8 +17,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Editor files
+# Editor/OS files
 .DS_Store
 .vscode/
 .idea/
-
