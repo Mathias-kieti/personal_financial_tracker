@@ -1,4 +1,4 @@
-const Budget = require('../models/Budget');
+const Budget = require('../Models/Budget');
 const { validationResult } = require('express-validator');
 
 // @desc    Create new budget

@@ -1,4 +1,4 @@
-const Bill = require('../models/Bill');
+const Bill = require('../Models/Bill');
 const { validationResult } = require('express-validator');
 
 // @desc    Create new bill
