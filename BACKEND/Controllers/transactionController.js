@@ -1,4 +1,4 @@
-const Transaction = require('../models/Transaction');
+const Transaction = require('../Models/Transaction');
 const { validationResult } = require('express-validator');
 
 // @desc    Create new transaction
