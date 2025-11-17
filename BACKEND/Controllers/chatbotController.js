@@ -1,8 +1,8 @@
-const Transaction = require('../models/Transaction');
-const Budget = require('../models/Budget');
-const Goal = require('../models/Goal');
-const Bill = require('../models/Bill');
-const { getFinancialOverview, getSpendingPatterns } = require('../utils/analytics');
+const Transaction = require('../Models/Transaction');
+const Budget = require('../Models/Budget');
+const Goal = require('../Models/goal');
+const Bill = require('../Models/Bill');
+const { getFinancialOverview, getSpendingPatterns } = require('../Utils/analytics');
 
 /**
  * Process user message and generate AI response
