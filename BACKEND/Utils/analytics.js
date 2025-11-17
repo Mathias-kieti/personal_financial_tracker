@@ -1,7 +1,7 @@
 const Transaction = require('../Models/Transaction');
 const Budget = require('../Models/Budget');
 const Goal = require('../Models/goal');
-const Bill = require('../Models/bill');
+const Bill = require('../Models/Bill');
 
 /**
  * Get comprehensive financial analytics for a user
