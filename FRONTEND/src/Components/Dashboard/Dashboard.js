@@ -382,6 +382,8 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      {/* Mount Chatbot */}
+      <Chatbot /> {/* <-- Added mounting */}
     </div>
   );
 };
