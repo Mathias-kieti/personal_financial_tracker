@@ -1,8 +1,8 @@
 const express = require('express');
 const { body } = require('express-validator');
 const { sendMessage } = require('../Controllers/chatbotController');
-const { authenticateToken } = require('../middleware/auth');
-const { handleValidationErrors } = require('../middleware/validation');
+const { authenticateToken } = require('../Middleware/auth');
+const { handleValidationErrors } = require('../Middleware/validation');
 
 const router = express.Router();
 
