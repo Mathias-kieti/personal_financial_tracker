@@ -10,6 +10,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend 
 } from 'recharts';
 
+// import chartbot
+import Chatbot from '../Common/Chatbot';
+
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
