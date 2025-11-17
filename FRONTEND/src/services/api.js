@@ -104,4 +104,8 @@ export const billAPI = {
   }),
 };
 
+export const chatAPI = {
+  sendMessage: (data) => api.post('/chat/message', data),
+};
+
 export default api;

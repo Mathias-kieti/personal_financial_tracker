@@ -8,6 +8,7 @@ const transaction = require('./routes/transaction');
 const budget = require('./routes/budget');
 const goal = require('./routes/goal');
 const bill = require('./routes/bill');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/transaction', transaction);
 app.use('/api/budget', budget);
 app.use('/api/goal', goal);
 app.use('/api/bill', bill);
+app.use('/api/chat', chatbotRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

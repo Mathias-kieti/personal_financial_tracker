@@ -8,6 +8,7 @@ import Header from './Components/Common/Header';
 import Loading from './Components/Common/Loading';
 import Login from './Components/Auth/Login';
 import Register from './Components/Auth/Register';
+import Chatbot from './Components/Common/Chatbot';
 import Dashboard from './Components/Dashboard/Dashboard';
 import TransactionList from './Components/Transactions/TransactionList';
 import BudgetManager from './Components/Budget/BudgetManager';
