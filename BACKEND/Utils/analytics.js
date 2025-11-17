@@ -1,4 +1,4 @@
-const Transaction = require('../Models/transaction');
+const Transaction = require('../Models/Transaction');
 const Budget = require('../Models/budget');
 const Goal = require('../Models/goal');
 const Bill = require('../Models/bill');
