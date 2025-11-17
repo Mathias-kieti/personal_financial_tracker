@@ -12,8 +12,13 @@ const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Correct CORS Middleware
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://personal-financial-tracker-ten.vercel.app'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Database connection
@@ -51,7 +56,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-//  404 handler 
+// 404 handler 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
