@@ -4,6 +4,10 @@ const Budget = require('../Models/Budget');
 const Goal = require('../Models/goal');
 const Bill = require('../Models/Bill');
 
+if (!process.env.GEMINI_API_KEY) {
+  console.error("FATAL ERROR: GEMINI_API_KEY is not defined. Please set it in your .env file.");
+}
+
 // Initialize the Google Generative AI model
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
