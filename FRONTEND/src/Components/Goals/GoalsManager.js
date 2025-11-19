@@ -13,7 +13,7 @@ const GoalsManager = () => {
       setLoading(true);
       setError(null);
       const response = await goalAPI.getAll();
-      const goalsArray = response.goals || [];
+      const goalsArray = Array.isArray(response) ? response : response.goals || [];
       setGoals(goalsArray);
     } catch (err) {
       console.error('Error fetching goals:', err);
