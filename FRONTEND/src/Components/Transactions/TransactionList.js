@@ -1,159 +1,109 @@
 import React, { useState, useEffect } from 'react';
 import TransactionForm from './TransactionForm';
 import TransactionItem from './TransactionItem';
+import { transactionAPI } from '../../services/api'; // Import the API service
 
 const TransactionList = () => {
   const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Get token from localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
-  // Fetch transactions from backend
   const fetchTransactions = async () => {
     try {
-      const token = getToken();
-      const response = await fetch('http://localhost:5000/api/transaction', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      console.log('DEBUG - Fetch response status:', response.status);
+      setLoading(true);
+      console.log('🔍 Fetching transactions via API service...');
       
-      if (response.ok) {
-        const result = await response.json();
-        console.log('DEBUG - Full backend response:', result);
-        
-        //  Extract transactions from the nested response
-        const transactionsArray = result.data.transactions || [];
-        console.log('DEBUG - Transactions array:', transactionsArray);
-        
-        setTransactions(transactionsArray);
-      } else {
-        console.error('Failed to fetch transactions, status:', response.status);
-        setTransactions([]);
-      }
+      // Use the API service instead of raw fetch
+      const response = await transactionAPI.getAll();
+      
+      console.log('DEBUG - API service response:', response);
+      
+      // The response is already processed by the interceptor
+      const transactionsArray = response?.data?.transactions || response?.transactions || response?.data || [];
+      console.log('DEBUG - Transactions array:', transactionsArray);
+
+      setTransactions(transactionsArray);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      // The interceptor already handles redirect to login on 401
       setTransactions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Add transaction to backend
   const addTransaction = async (transactionData) => {
     try {
-      const token = getToken();
+      console.log('[DEBUG] Sending transaction via API service:', transactionData);
+
+      // Use the API service instead of raw fetch
+      const response = await transactionAPI.create(transactionData);
       
-      if (!token) {
-        console.error('No token found - user not authenticated');
-        alert('Please log in first');
-        return;
+      console.log('DEBUG - Create transaction response:', response);
+
+      const newTransaction = response?.data?.transaction || response?.transaction || response?.data;
+      console.log('Transaction saved via API:', newTransaction);
+
+      if (!newTransaction || !newTransaction.type) {
+        throw new Error('Invalid transaction returned from backend');
       }
 
-      //  Include goalId in the backend data
-      const backendData = {
-        type: transactionData.type,
-        category: transactionData.category,
-        amount: Number(transactionData.amount),
-        date: transactionData.date,
-        description: transactionData.category,
-        goalId: transactionData.goalId 
-      };
-
-      console.log('[DEBUG] Sending transaction to backend with goalId:', transactionData.goalId, 'Full data:', backendData);
-
-      const response = await fetch('http://localhost:5000/api/transaction', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(backendData),
-      });
-
-      console.log('DEBUG - POST response status:', response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('DEBUG - Full backend response:', result);
-        
-        // Extract transaction from the nested response
-        const newTransaction = result.data.transaction;
-        console.log('Transaction saved successfully:', newTransaction);
-        console.log('Transaction goalId:', newTransaction.goalId); 
-        
-        setTransactions(prev => [...prev, newTransaction]);
-        alert('Transaction saved successfully!');
-      } else {
-        const errorText = await response.text();
-        console.error('Backend error response:', errorText);
-        
-        let errorMessage = 'Failed to save transaction';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          errorMessage = errorText || errorMessage;
-        }
-        
-        console.error('Failed to add transaction:', errorMessage);
-        alert('Error: ' + errorMessage);
-      }
+      setTransactions(prev => [...prev, newTransaction]);
+      alert('Transaction saved successfully!');
+      
+      // Refresh the list to ensure we have the latest data
+      fetchTransactions();
     } catch (error) {
-      console.error('Network error adding transaction:', error);
-      alert('Network error: ' + error.message);
+      console.error('Error adding transaction:', error);
+      // Error is already handled by the interceptor, but we can show a specific message
+      if (error.response?.data?.message) {
+        alert('Error: ' + error.response.data.message);
+      } else {
+        alert('Failed to save transaction. Please try again.');
+      }
     }
   };
 
-  // Delete transaction from backend
   const deleteTransaction = async (id) => {
     try {
-      const token = getToken();
+      console.log('Deleting transaction:', id);
       
-      const response = await fetch(`http://localhost:5000/api/transaction/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setTransactions(prev => prev.filter(tx => tx._id !== id));
-        console.log('Transaction deleted successfully');
-      } else {
-        console.error('Failed to delete transaction');
-      }
+      // Use the API service instead of raw fetch
+      await transactionAPI.delete(id);
+      
+      setTransactions(prev => prev.filter(tx => tx._id !== id));
+      console.log('Transaction deleted successfully');
     } catch (error) {
       console.error('Error deleting transaction:', error);
+      alert('Failed to delete transaction');
     }
   };
 
-  // Fetch transactions on component mount
-  useEffect(() => {
-    fetchTransactions();
+  useEffect(() => { 
+    fetchTransactions(); 
   }, []);
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Transactions</h1>
-      
       <TransactionForm onSubmit={addTransaction} />
-
-      <div className="space-y-3">
-        {!transactions || transactions.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No transactions yet</p>
-        ) : (
-          transactions.map((tx) => (
-            <TransactionItem
-              key={tx._id}
-              transaction={tx}
-              onDelete={deleteTransaction}
-            />
-          ))
-        )}
-      </div>
+      
+      {loading ? (
+        <p className="text-gray-500 text-center py-8">Loading transactions...</p>
+      ) : (
+        <div className="space-y-3">
+          {!transactions || transactions.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No transactions yet</p>
+          ) : (
+            transactions.map((tx) => (
+              <TransactionItem
+                key={tx._id}
+                transaction={tx}
+                onDelete={deleteTransaction}
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

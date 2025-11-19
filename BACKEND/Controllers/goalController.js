@@ -14,33 +14,55 @@ const createGoal = async (req, res) => {
     const goalData = { ...req.body, user: req.user._id };
     const goal = await Goal.create(goalData);
 
-    res.status(201).json(goal); // return goal directly
+    res.status(201).json(goal);
   } catch (error) {
     console.error('Create goal error:', error);
     res.status(500).json({ error: 'Failed to create goal' });
   }
 };
 
+// @desc    Get a single goal for user
+// @route   GET /api/goals/:id
+// @access  Private
+const getGoal = async (req, res) => {
+  try {
+    const goal = await Goal.findOne({
+      _id: req.params.id,
+      user: req.user._id
+    }).populate('user', 'name email');
+
+    if (!goal) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
+
+    res.json(goal);
+  } catch (error) {
+    console.error('Get goal error:', error);
+    res.status(500).json({ error: 'Failed to retrieve goal' });
+  }
+};
+
 // @desc    Get all goals for user
 // @route   GET /api/goals
 // @access  Private
-const getGoal = async (req, res) => {
+const getGoals = async (req, res) => {
   try {
     const filter = { user: req.user._id };
     if (req.query.status) filter.status = req.query.status;
     if (req.query.category) filter.category = req.query.category;
     if (req.query.priority) filter.priority = req.query.priority;
 
-    const goal = await Goal.find(filter)
+    const goals = await Goal.find(filter)
       .sort({ priority: -1, deadline: 1, createdAt: -1 })
       .populate('user', 'name email');
 
-    res.json(goal); // return array directly
+    res.json({ goals });
   } catch (error) {
     console.error('Get goals error:', error);
     res.status(500).json({ error: 'Failed to retrieve goals' });
   }
 };
+
 // @desc    Update goal
 // @route   PUT /api/goals/:id
 // @access  Private
@@ -78,7 +100,7 @@ const deleteGoal = async (req, res) => {
 
     if (!goal) return res.status(404).json({ error: 'Goal not found' });
 
-    res.json(goal); // return deleted goal directly
+    res.json(goal);
   } catch (error) {
     console.error('Delete goal error:', error);
     res.status(500).json({ error: 'Failed to delete goal' });
@@ -117,30 +139,30 @@ const updateGoalProgress = async (req, res) => {
 const getGoalStats = async (req, res) => {
   try {
     const stats = await Goal.getGoalStats(req.user._id);
-    const goal = await Goal.find({ user: req.user._id });
+    const goals = await Goal.find({ user: req.user._id });
 
     const summary = {
-      totalGoals: goal.length,
-      activeGoals: goal.filter(g => g.status === 'active').length,
-      completedGoals: goal.filter(g => g.status === 'completed').length,
-      totalTargetAmount: goal.reduce((sum, g) => sum + g.targetAmount, 0),
-      totalCurrentAmount: goal.reduce((sum, g) => sum + g.currentAmount, 0),
-      totalRemainingAmount: goal.reduce((sum, g) => sum + (g.targetAmount - g.currentAmount), 0),
-      averageProgress: goal.length > 0
-        ? goal.reduce((sum, g) => sum + ((g.currentAmount / g.targetAmount) * 100), 0) / goal.length
+      totalGoals: goals.length,
+      activeGoals: goals.filter(g => g.status === 'active').length,
+      completedGoals: goals.filter(g => g.status === 'completed').length,
+      totalTargetAmount: goals.reduce((sum, g) => sum + g.targetAmount, 0),
+      totalCurrentAmount: goals.reduce((sum, g) => sum + g.currentAmount, 0),
+      totalRemainingAmount: goals.reduce((sum, g) => sum + (g.targetAmount - g.currentAmount), 0),
+      averageProgress: goals.length > 0
+        ? goals.reduce((sum, g) => sum + ((g.currentAmount / g.targetAmount) * 100), 0) / goals.length
         : 0,
-      goalsNearDeadline: goal.filter(g => {
+      goalsNearDeadline: goals.filter(g => {
         if (!g.deadline || g.status !== 'active') return false;
         const daysRemaining = Math.ceil((new Date(g.deadline) - new Date()) / (1000 * 60 * 60 * 24));
         return daysRemaining <= 30 && daysRemaining > 0;
       }).length,
-      overdueGoals: goal.filter(g => {
+      overdueGoals: goals.filter(g => {
         if (!g.deadline || g.status !== 'active') return false;
         return new Date(g.deadline) < new Date();
       }).length
     };
 
-    res.json({ summary, stats }); // direct, no wrapping
+    res.json({ summary, stats });
   } catch (error) {
     console.error('Get goal stats error:', error);
     res.status(500).json({ error: 'Failed to retrieve goal statistics' });
@@ -150,6 +172,7 @@ const getGoalStats = async (req, res) => {
 module.exports = {
   createGoal,
   getGoal,
+  getGoals,
   updateGoal,
   deleteGoal,
   updateGoalProgress,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { transactionAPI } from '../../services/api';
 
 const GoalsCard = ({ goal, onUpdate, onDelete }) => {
   const [progress, setProgress] = useState(0);
@@ -6,50 +7,30 @@ const GoalsCard = ({ goal, onUpdate, onDelete }) => {
   const [totalSaved, setTotalSaved] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get token from localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
-  // Fetch transactions linked to a goal and calculate progress
   useEffect(() => {
     const fetchGoalTransactions = async () => {
       setIsLoading(true);
       try {
-        const token = getToken();
+        const response = await transactionAPI.getAll({ goalId: goal._id });
+        const transactions = response?.data?.transactions || response?.transactions || [];
         
-        // Fetch transactions linked to this goal
-        const response = await fetch(`http://localhost:5000/api/transaction?goalId=${goal._id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const transactions = result.data?.transactions || [];
-          
-          setLinkedTransactions(transactions);
-          
-          // Calculate total saved from INCOME transactions only
-          const incomeTransactions = transactions.filter(tx => tx.type === 'income');
-          const incomeTotal = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0);
-          
-          setTotalSaved(incomeTotal);
-          
-          // Calculate progress percentage
-          const progressPercentage = goal.targetAmount > 0 
-            ? (incomeTotal / goal.targetAmount) * 100 
-            : 0;
-          
-          setProgress(Math.min(progressPercentage, 100));
-          
-          // AUTO-UPDATE the goal's currentAmount in the database
-          if (incomeTotal !== goal.currentAmount) {
-            await onUpdate(goal._id, { 
-              currentAmount: incomeTotal 
-            });
-          }
+        setLinkedTransactions(transactions);
+        
+        const incomeTransactions = transactions.filter(tx => tx.type === 'income');
+        const incomeTotal = incomeTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+        
+        setTotalSaved(incomeTotal);
+        
+        const progressPercentage = goal.targetAmount > 0 
+          ? (incomeTotal / goal.targetAmount) * 100 
+          : 0;
+        
+        setProgress(Math.min(progressPercentage, 100));
+        
+        if (incomeTotal !== goal.currentAmount) {
+          await onUpdate(goal._id, { 
+            currentAmount: incomeTotal 
+          });
         }
       } catch (err) {
         console.error('Error fetching transactions for goal:', err);

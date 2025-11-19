@@ -1,114 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import GoalsForm from './GoalsForm';
 import GoalsCard from './GoalsCard';
+import { goalAPI } from '../../services/api';
 
 const GoalsManager = () => {
-  const [goals, setGoals] = useState([]); 
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Get token from localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
+  const fetchGoals = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await goalAPI.getAll();
+      const goalsArray = response.goals || [];
+      setGoals(goalsArray);
+    } catch (err) {
+      console.error('Error fetching goals:', err);
+      setError('Failed to fetch goals. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Fetch goals from backend on mount
   useEffect(() => {
-    const token = getToken();
-    
-    fetch('http://localhost:5000/api/goal', {
-      headers: {
-        'Authorization': `Bearer ${token}` 
-      }
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Fetched goals:", data);
-        setGoals(data); 
-      })
-      .catch((err) => console.error('Error fetching goals:', err));
+    fetchGoals();
   }, []);
 
-  const addGoal = (goalData) => {
-    const token = getToken();
-    
-    fetch('http://localhost:5000/api/goal', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify(goalData),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((newGoal) => {
-        console.log("Created goal:", newGoal);
-        setGoals(prevGoals => [...prevGoals, newGoal]); 
-      })
-      .catch((err) => console.error('Error adding goal:', err));
+  const addGoal = async (goalData) => {
+    try {
+      const newGoal = await goalAPI.create(goalData);
+      setGoals(prevGoals => [...prevGoals, newGoal]);
+    } catch (err) {
+      console.error('Error adding goal:', err);
+      alert('Failed to add goal. Please try again.');
+    }
   };
 
-  const updateGoal = (id, updatedGoal) => {
-    const token = getToken();
-    
-    fetch(`http://localhost:5000/api/goal/${id}`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify(updatedGoal),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((savedGoal) => {
-        console.log("Updated goal:", savedGoal);
-        setGoals(prevGoals =>
-          prevGoals.map((goal) =>
-            goal._id === id ? savedGoal : goal
-          )
-        );
-      })
-      .catch((err) => console.error('Error updating goal:', err));
+  const updateGoal = async (id, updatedGoal) => {
+    try {
+      const savedGoal = await goalAPI.update(id, updatedGoal);
+      setGoals(prevGoals =>
+        prevGoals.map((goal) =>
+          goal._id === id ? savedGoal : goal
+        )
+      );
+    } catch (err) {
+      console.error('Error updating goal:', err);
+      alert('Failed to update goal. Please try again.');
+    }
   };
 
-  const deleteGoal = (id) => {
-    const token = getToken();
-    
-    fetch(`http://localhost:5000/api/goal/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}` 
-      }
-    })
-      .then(() => {
-        setGoals(prevGoals => prevGoals.filter((goal) => goal._id !== id));
-      })
-      .catch((err) => console.error('Error deleting goal:', err));
+  const deleteGoal = async (id) => {
+    try {
+      await goalAPI.delete(id);
+      setGoals(prevGoals => prevGoals.filter((goal) => goal._id !== id));
+    } catch (err) {
+      console.error('Error deleting goal:', err);
+      alert('Failed to delete goal. Please try again.');
+    }
   };
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">My Goals</h1>
 
-      {/* Add Goal Form */}
       <GoalsForm onAddGoal={addGoal} />
 
-      {/* Goal List */}
+      {loading && <p className="text-gray-600">Loading goals...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+
       <div className="mt-6 grid gap-4">
-        {goals.length > 0 ? (
+        {!loading && !error && goals.length > 0 ? (
           goals.map((goal) => (
             <GoalsCard
               key={goal._id}  
@@ -118,7 +81,7 @@ const GoalsManager = () => {
             />
           ))
         ) : (
-          <p className="text-gray-600">No goals yet. Start by adding one above.</p>
+          !loading && !error && <p className="text-gray-600">No goals yet. Start by adding one above.</p>
         )}
       </div>
     </div>

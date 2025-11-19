@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const {
   createGoal,
   getGoal,
+  getGoals,
   updateGoal,
   deleteGoal,
   updateGoalProgress,
@@ -51,7 +52,7 @@ const progressValidation = [
 
 // Routes
 router.get('/stats', authenticateToken, getGoalStats);
-router.get('/', authenticateToken, getGoal);
+router.get('/', authenticateToken, getGoals);
 router.get('/:id', authenticateToken, getGoal);
 router.post('/', authenticateToken, goalValidation, createGoal);
 router.put('/:id', authenticateToken, goalValidation, updateGoal);

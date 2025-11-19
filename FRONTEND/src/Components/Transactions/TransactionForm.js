@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { goalAPI } from '../../services/api';
 
 const TransactionForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
     type: 'expense',
     category: '',
+    description: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
     goalId: '' 
@@ -27,76 +29,36 @@ const TransactionForm = ({ onSubmit }) => {
 
   const categories = formData.type === 'income' ? incomeCategories : expenseCategories;
 
-  // Get token from localStorage
-  const getToken = () => {
-    return localStorage.getItem('token');
-  };
-
   // Fetch goals for the dropdown
   useEffect(() => {
     const fetchGoals = async () => {
       try {
         setLoadingGoals(true);
         setError('');
-        const token = getToken();
         
-        if (!token) {
-          setError('No authentication token found');
-          setLoadingGoals(false);
-          return;
-        }
-
         console.log('🔍 Fetching goals for transaction form...');
         
-        const response = await fetch('http://localhost:5000/api/goal', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        console.log('Goals API Response status:', response.status);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Goals API Response data:', data);
-          
-          // Handle different response formats safely
-          let goalsArray = [];
-          
-          if (Array.isArray(data)) {
-            goalsArray = data;
-          } else if (data && typeof data === 'object') {
-            if (Array.isArray(data.data)) {
-              goalsArray = data.data;
-            } else if (Array.isArray(data.goals)) {
-              goalsArray = data.goals;
-            } else {
-              goalsArray = Object.values(data).filter(item => 
-                item && typeof item === 'object' && item.name !== undefined
-              );
-            }
-          }
-          
-          console.log(`Processed ${goalsArray.length} goals:`, goalsArray);
+        const response = await goalAPI.getAll();
         
-          if (!Array.isArray(goalsArray)) {
-            goalsArray = [];
-          }
-          
-          setGoals(goalsArray);
-          
-          if (goalsArray.length === 0) {
-            setError('No goals found. Please create goals first.');
-          }
-        } else {
-          const errorText = await response.text();
-          console.error('Goals API Error:', errorText);
-          setError(`Failed to load goals: ${response.status}`);
+        console.log('Goals API Response:', response);
+        
+        const goalsArray = Array.isArray(response) ? response : response.goals || [];
+        
+        console.log(`Processed ${goalsArray.length} goals:`, goalsArray);
+        setGoals(goalsArray);
+        
+        if (goalsArray.length === 0) {
+          setError('No goals found. Create some goals first!');
         }
       } catch (err) {
-        console.error('Network error fetching goals:', err);
-        setError('Network error loading goals. Check if backend is running.');
+        console.error('Error fetching goals:', err);
+        if (err.response?.status === 401) {
+          setError('Authentication failed. Please log in again.');
+        } else if (err.response?.data?.message) {
+          setError(err.response.data.message);
+        } else {
+          setError('Failed to load goals. Please try again.');
+        }
       } finally {
         setLoadingGoals(false);
       }
@@ -106,41 +68,52 @@ const TransactionForm = ({ onSubmit }) => {
   }, []);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    
+    if (name === 'type') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        category: ''
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     if (!formData.category || !formData.amount || !formData.date) {
-      alert('Please fill in all fields');
+      alert('Please fill in all required fields');
       return;
     }
 
-    // ✅ FIXED: Create base object without goalId
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount greater than 0');
+      return;
+    }
+
     const submissionData = {
       type: formData.type,
       category: formData.category,
-      amount: Number(formData.amount),
+      amount: amount,
       date: formData.date,
-      description: formData.category
+      description: formData.description,
+      goalId: formData.goalId && formData.goalId.trim() !== '' ? formData.goalId : null
     };
 
-    // ✅ ONLY add goalId if it has a value (not empty string)
-    if (formData.goalId && formData.goalId.trim() !== '') {
-      submissionData.goalId = formData.goalId;
-    }
-
-    console.log('🎯 [DEBUG] Submitting transaction with goalId:', formData.goalId || 'None', 'Full data:', submissionData);
+    console.log('Submitting transaction:', submissionData);
     onSubmit(submissionData);
     
-    // Reset form
     setFormData({
-      type: 'expense',
+      type: formData.type,
       category: '',
+      description: '',
       amount: '',
       date: new Date().toISOString().split('T')[0],
       goalId: '' 
@@ -159,7 +132,7 @@ const TransactionForm = ({ onSubmit }) => {
           name="type"
           value={formData.type}
           onChange={handleChange}
-          className="w-1/3 border rounded-lg px-3 py-2 text-sm"
+          className="w-1/3 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         >
           <option value="income">Income</option>
@@ -170,7 +143,7 @@ const TransactionForm = ({ onSubmit }) => {
           name="category"
           value={formData.category}
           onChange={handleChange}
-          className="flex-1 border rounded-lg px-3 py-2 text-sm"
+          className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         >
           <option value="">Select Category</option>
@@ -188,8 +161,8 @@ const TransactionForm = ({ onSubmit }) => {
           name="amount"
           value={formData.amount}
           onChange={handleChange}
-          placeholder="Amount (required)"
-          className="flex-1 border rounded-lg px-3 py-2 text-sm"
+          placeholder="Amount"
+          className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
           min="0.01"
           step="0.01"
@@ -199,45 +172,60 @@ const TransactionForm = ({ onSubmit }) => {
           name="date"
           value={formData.date}
           onChange={handleChange}
-          className="w-1/2 border rounded-lg px-3 py-2 text-sm"
+          className="w-1/2 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
+      <div className="flex gap-3">
+        <input
+            type="text"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder="Description (optional)"
+            className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
 
-      {/* Goal Selection Dropdown */}
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Allocate to Goal (Optional)
+        </label>
         <select
           name="goalId"
           value={formData.goalId}
           onChange={handleChange}
-          className="w-full border rounded-lg px-3 py-2 text-sm"
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           disabled={loadingGoals}
         >
-          <option value="">-- Allocate to Goal (Optional) --</option>
+          <option value="">-- Select a Goal --</option>
           {loadingGoals ? (
             <option value="" disabled>Loading goals...</option>
           ) : error ? (
-            <option value="" disabled>Error: {error}</option>
+            <option value="" disabled>{error}</option>
           ) : safeGoals.length === 0 ? (
-            <option value="" disabled>No goals found. Create goals first.</option>
+            <option value="" disabled>No goals available</option>
           ) : (
             safeGoals.map(goal => (
               <option key={goal._id} value={goal._id}>
-                {goal.name} - Target: KSH {goal.targetAmount?.toLocaleString()}
+                {goal.name} - Target: ${goal.targetAmount?.toLocaleString()}
+                {goal.currentAmount !== undefined && ` ($${goal.currentAmount?.toLocaleString()} saved)`}
               </option>
             ))
           )}
         </select>
-        
-        {/* Debug info */}
-        <div className="text-xs text-gray-400 mt-1">
-          Status: {loadingGoals ? 'Loading...' : error ? `Error: ${error}` : `Found ${safeGoals.length} goals`}
-        </div>
+        {!loadingGoals && (
+          <div className={`text-xs mt-1 ${
+            error ? 'text-red-500' : 'text-gray-500'
+          }`}>
+            {error || (safeGoals.length > 0 ? `${safeGoals.length} goal(s) available` : 'Create goals to allocate transactions')}
+          </div>
+        )}
       </div>
       
       <button
         type="submit"
-        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         disabled={loadingGoals}
       >
         {loadingGoals ? 'Loading...' : 'Add Transaction'}

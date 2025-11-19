@@ -38,7 +38,7 @@ const transactionValidation = [
     .isLength({ max: 200 })
     .withMessage('Description cannot exceed 200 characters'),
   body('goalId')
-    .optional()
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage('Goal ID must be a valid MongoDB ID') 
 ];

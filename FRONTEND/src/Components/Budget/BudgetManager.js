@@ -5,6 +5,8 @@ import BudgetProgress from './BudgetProgress';
 const BudgetManager = () => {
   const [budgets, setBudgets] = useState([]);
 
+  const API_BASE = "https://personal-finance-tracker2.onrender.com/api";
+
   // Get token from localStorage
   const getToken = () => {
     return localStorage.getItem('token');
@@ -15,8 +17,7 @@ const BudgetManager = () => {
     try {
       const token = getToken();
       
-      //  Use the endpoint that includes spending data
-      const response = await fetch('http://localhost:5000/api/budget/with-spending', {
+      const response = await fetch(`${API_BASE}/budget/with-spending`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -28,7 +29,6 @@ const BudgetManager = () => {
         const result = await response.json();
         console.log('Full backend response:', result);
         
-        // Extract budgets from nested response
         const budgetsArray = result.data?.budgets || [];
         console.log('Budgets with spending:', budgetsArray);
         
@@ -49,18 +49,18 @@ const BudgetManager = () => {
       const token = getToken();
       
       if (!token) {
-        console.error('No token found - user not authenticated');
+        console.error('No token found');
         alert('Please log in first');
         return;
       }
-      // Prepare data for backend
+
       const backendData = {
         category: budgetData.category.toLowerCase(), 
         amount: Number(budgetData.amount),
-        period: 'monthly', 
-        startDate: new Date().toISOString(), 
+        period: 'monthly',
+        startDate: new Date().toISOString(),
         alertThresholds: {
-          warning: 80, 
+          warning: 80,
           danger: 95
         },
         isActive: true,
@@ -69,7 +69,7 @@ const BudgetManager = () => {
 
       console.log('Sending budget:', backendData);
 
-      const response = await fetch('http://localhost:5000/api/budget', {
+      const response = await fetch(`${API_BASE}/budget`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -83,33 +83,13 @@ const BudgetManager = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('DEBUG - Full backend response:', result);
-        
-        // Extract budget from nested response
-        const newBudget = result.data?.budget;
-        console.log('Budget saved successfully:', newBudget);
-        
-        // Refresh the budgets list to get the new budget with spending data
+
         fetchBudgets();
         alert('Budget saved successfully!');
       } else {
         const errorText = await response.text();
-        console.error('Backend error response:', errorText);
-        
-        let errorMessage = 'Failed to save budget';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorMessage;
-          
-          // Show validation errors if any
-          if (errorData.errors) {
-            errorMessage += '\n' + errorData.errors.map(err => err.msg).join('\n');
-          }
-        } catch (e) {
-          errorMessage = errorText || errorMessage;
-        }
-        
-        console.error('Failed to add budget:', errorMessage);
-        alert('Error: ' + errorMessage);
+        console.error('Backend error:', errorText);
+        alert("Error: " + errorText);
       }
     } catch (error) {
       console.error('Network error adding budget:', error);
@@ -122,7 +102,7 @@ const BudgetManager = () => {
     try {
       const token = getToken();
       
-      const response = await fetch(`http://localhost:5000/api/budget/${id}`, {
+      const response = await fetch(`${API_BASE}/budget/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -131,7 +111,7 @@ const BudgetManager = () => {
 
       if (response.ok) {
         setBudgets(prev => prev.filter(budget => budget._id !== id));
-        console.log('Budget deleted successfully');
+        console.log('Budget deleted');
       } else {
         console.error('Failed to delete budget');
       }
@@ -140,7 +120,6 @@ const BudgetManager = () => {
     }
   };
 
-  // Fetch budgets on component mount
   useEffect(() => {
     fetchBudgets();
   }, []);
